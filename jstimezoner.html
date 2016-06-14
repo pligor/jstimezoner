@@ -10,6 +10,10 @@
     <script type="application/javascript">
         //based on: https://github.com/schickling/timemachine/
 
+        function isNumeric(n) {
+            return !isNaN(parseFloat(n)) && isFinite(n);
+        }
+
         (function (name, definition) {
             if (typeof define === 'function') { // AMD
                 define(definition);
@@ -53,12 +57,19 @@
                     Date.prototype = OriginalDate.prototype
                 },
 
-                _getNowDate: function() {
+                _getShiftedDate: function (timestampOrDateString) {
                     var me = this
 
-                    var date = new OriginalDate();
+                    var date = (timestampOrDateString || (timestampOrDateString === 0)) ?
+                            new OriginalDate(timestampOrDateString) : new OriginalDate();
 
-                    if(me.targetTimezoneOffsetFromUTC === null) {
+                    return me._transformExistingDate(date)
+                },
+
+                _transformExistingDate: function (date) {
+                    var me = this
+
+                    if (me.targetTimezoneOffsetFromUTC === null) {
                         //nop
                     } else {
                         date.setMinutes(date.getMinutes() + (date.getTimezoneOffset() - me.targetTimezoneOffsetFromUTC))
@@ -71,19 +82,42 @@
                     var me = this;
 
                     Date = function () {
-                        var date;
-
                         if (arguments.length === 0) {
-                            date = me._getNowDate()
+                            return me._getShiftedDate()
                         } else if (arguments.length === 1) {
-                            date = new OriginalDate(arguments[0]);
-                        } else if (arguments.length === 7) {
-                            date = new OriginalDate(arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6]);
-                        } else {
-                            date = new OriginalDate(me.timestamp);
-                        }
+                            var arg = arguments[0]
 
-                        return date;
+                            if (isNumeric(arg)) {
+                                return me._getShiftedDate(arg)
+                            } else {    //date parser comes into play
+                                return me._getShiftedDate(arg)  //it happens to be managed the same way
+                            }
+                        } else if (arguments.length >= 2 && arguments.length <= 7) {
+                            var argLen = arguments.length
+
+                            switch (argLen) {
+                                case 2:
+                                    return me._transformExistingDate(new OriginalDate(arguments[0], arguments[1]))
+                                    break;
+                                case 3:
+                                    return me._transformExistingDate(new OriginalDate(arguments[0], arguments[1], arguments[2]))
+                                    break;
+                                case 4:
+                                    return me._transformExistingDate(new OriginalDate(arguments[0], arguments[1], arguments[2], arguments[3]))
+                                    break;
+                                case 5:
+                                    return me._transformExistingDate(new OriginalDate(arguments[0], arguments[1], arguments[2], arguments[3], arguments[4]))
+                                    break;
+                                case 6:
+                                    return me._transformExistingDate(new OriginalDate(arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5]))
+                                    break;
+                                case 7:
+                                    return me._transformExistingDate(new OriginalDate(arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6]))
+                                    break;
+                            }
+                        } else {
+                            throw new Error("error in parameters of date object")
+                        }
                     };
 
                     Date.prototype = OriginalDate.prototype;
@@ -91,7 +125,6 @@
                     var originalGetTime = OriginalDate.prototype.getTime
 
                     Date.now = function () {
-                        //return me._getNowDate().getTime()
                         return originalGetTime.apply(new OriginalDate())
                     };
 
@@ -99,12 +132,12 @@
 
                     Date.UTC = OriginalDate.UTC;
 
-                    Date.prototype.getTime = function() {
+                    Date.prototype.getTime = function () {
                         var time = originalGetTime.apply(this, arguments)
 
                         var date = new OriginalDate(time);
 
-                        if(me.targetTimezoneOffsetFromUTC === null) {
+                        if (me.targetTimezoneOffsetFromUTC === null) {
                             //nop
                         } else {
                             date.setMinutes(date.getMinutes() - (date.getTimezoneOffset() - me.targetTimezoneOffsetFromUTC))
@@ -124,7 +157,7 @@
     </script>
 
     <script>
-        (function() {
+        (function () {
             var date = new Date()
 
             document.writeln(date.toString())
@@ -143,7 +176,7 @@
         document.writeln("=============================================");
         document.writeln("<br/>");
 
-        (function() {
+        (function () {
             timezoner.config({
                 targetTimezoneOffsetFromUTC: -60,
             })
@@ -166,7 +199,7 @@
         document.writeln("=============================================");
         document.writeln("<br/>");
 
-        (function() {
+        (function () {
             timezoner.reset()
 
             var date = new Date()

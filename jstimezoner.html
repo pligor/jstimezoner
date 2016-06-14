@@ -1,0 +1,191 @@
+<!DOCTYPE HTML>
+<html manifest="">
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+    <title>carmep</title>
+
+    <script type="application/javascript">
+        //based on: https://github.com/schickling/timemachine/
+
+        (function (name, definition) {
+            if (typeof define === 'function') { // AMD
+                define(definition);
+            } else if (typeof module !== 'undefined' && module.exports) { // Node.js
+                module.exports = definition();
+            } else { // Browser
+                var timezoner = definition()
+
+                var global = this
+
+                var old = global[name]
+
+                timezoner.noConflict = function () {
+                    global[name] = old
+
+                    return timezoner
+                }
+
+                global[name] = timezoner
+
+                //var offset = new Date().getTimezoneOffset();
+            }
+        })('timezoner', function () {
+
+            var OriginalDate = Date
+
+            var Timezoner = {
+                targetTimezoneOffsetFromUTC: null,
+
+                config: function (options) {
+                    this.targetTimezoneOffsetFromUTC = options.targetTimezoneOffsetFromUTC || this.targetTimezoneOffsetFromUTC
+
+                    this._apply();
+                },
+
+                reset: function () {
+                    this.targetTimezoneOffsetFromUTC = null
+
+                    Date = OriginalDate
+
+                    Date.prototype = OriginalDate.prototype
+                },
+
+                _getNowDate: function() {
+                    var me = this
+
+                    var date = new OriginalDate();
+
+                    if(me.targetTimezoneOffsetFromUTC === null) {
+                        //nop
+                    } else {
+                        date.setMinutes(date.getMinutes() + (date.getTimezoneOffset() - me.targetTimezoneOffsetFromUTC))
+                    }
+
+                    return date
+                },
+
+                _apply: function () {
+                    var me = this;
+
+                    Date = function () {
+                        var date;
+
+                        if (arguments.length === 0) {
+                            date = me._getNowDate()
+                        } else if (arguments.length === 1) {
+                            date = new OriginalDate(arguments[0]);
+                        } else if (arguments.length === 7) {
+                            date = new OriginalDate(arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6]);
+                        } else {
+                            date = new OriginalDate(me.timestamp);
+                        }
+
+                        return date;
+                    };
+
+                    Date.prototype = OriginalDate.prototype;
+
+                    var originalGetTime = OriginalDate.prototype.getTime
+
+                    Date.now = function () {
+                        //return me._getNowDate().getTime()
+                        return originalGetTime.apply(new OriginalDate())
+                    };
+
+                    Date.OriginalDate = OriginalDate;
+
+                    Date.UTC = OriginalDate.UTC;
+
+                    Date.prototype.getTime = function() {
+                        var time = originalGetTime.apply(this, arguments)
+
+                        var date = new OriginalDate(time);
+
+                        if(me.targetTimezoneOffsetFromUTC === null) {
+                            //nop
+                        } else {
+                            date.setMinutes(date.getMinutes() - (date.getTimezoneOffset() - me.targetTimezoneOffsetFromUTC))
+                        }
+
+                        return originalGetTime.apply(date)
+                        //return date.getTime()
+                        //return time
+                    }
+                },
+            };
+
+            Timezoner._apply();
+
+            return Timezoner;
+        });
+    </script>
+
+    <script>
+        (function() {
+            var date = new Date()
+
+            document.writeln(date.toString())
+
+            document.writeln("<br/>")
+
+            document.writeln(Date.now())
+
+            document.writeln("<br/>")
+
+            document.writeln(date.getTime())
+
+            document.writeln("<br/>")
+        })();
+
+        document.writeln("=============================================");
+        document.writeln("<br/>");
+
+        (function() {
+            timezoner.config({
+                targetTimezoneOffsetFromUTC: -60,
+            })
+
+            var date = new Date()
+
+            document.writeln(date.toString())
+
+            document.writeln("<br/>")
+
+            document.writeln(Date.now())
+
+            document.writeln("<br/>")
+
+            document.writeln(date.getTime())
+
+            document.writeln("<br/>")
+        })();
+
+        document.writeln("=============================================");
+        document.writeln("<br/>");
+
+        (function() {
+            timezoner.reset()
+
+            var date = new Date()
+
+            document.writeln(date.toString())
+
+            document.writeln("<br/>")
+
+            document.writeln(Date.now())
+
+            document.writeln("<br/>")
+
+            document.writeln(date.getTime())
+
+            document.writeln("<br/>")
+        })()
+    </script>
+
+
+</head>
+<body></body>
+</html>
